@@ -1,11 +1,18 @@
-const user = require('../models/user.server.model');
+const events = require('../models/event.model');
 
-exports.list = async function(req, res){
+exports.viewEvents = async function(req, res){
     
     console.log('\nRequest to list events...');
+    
+    const startIndex = req.query.startIndex ||0;
+    const count = req.query.count || 999999;
+    const q = req.query.q || '';
+    const categoryId = req.query.categoryId || null;
+    const organizerId = req.query.organizerId || null;
+    const sortBy = req.query.sortBy || 'DATE_DESC';
 
     try {
-        const result = await user.getAll();
+        const result = await events.getEvents(startIndex, count, q, categoryId, organizerId, sortBy);
         res.status(200)
             .send(result);
 
@@ -15,25 +22,27 @@ exports.list = async function(req, res){
     }
 };
 
-exports.create = async function(req, res){
+
+
+/*
+exports.createEvent = async function(req, res){
     
     console.log(`\nRequest to create a new event...`);
 
-    const title = req.body.title;
-    const description = req.body.description;
-    const date = req.body.date;
-    const image_filename = req.body.image_filename;
-    const is_online = req.body.is_online;
-    const url = req.body.url;
-    const venue = req.body.venue;
-    const capacity = req.body.capacity;
-    const requires_attendance_control = req.body.requires_attendance_control;
-    const fee = req.body.fee;
-    const organizer_id = req.body.organizer_id;
+    let title = req.body.title;
+    let description = req.body.description;
+    let date = req.body.date;
+    let image_filename = req.body.image_filename;
+    let is_online = req.body.is_online;
+    let url = req.body.url;
+    let venue = req.body.venue;
+    let capacity = req.body.capacity;
+    let requires_attendance_control = req.body.requires_attendance_control;
+    let fee = req.body.fee;
+    let organizer_id = req.body.organizer_id;
 
     try {
-        const result = await user.insert(title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id);
-        console.log(result)
+        const result = await events.addEvent(title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id);
         res.status(201)
             .send(result)
     } catch (err) {
@@ -44,14 +53,14 @@ exports.create = async function(req, res){
 };
 
 
-exports.read = async function(req, res){
+exports.viewSingleEvent = async function(req, res){
     
     console.log('\nRequest to read a user...');
 
     const id = req.params.id;
 
     try {
-        const result = await user.getOne(id);
+        const result = await events.getOne(id);
 
         if(result.length === 0) {
             res.status(400)
@@ -67,7 +76,7 @@ exports.read = async function(req, res){
     }
 };
 
-exports.update = async function(req, res){
+exports.editEvent = async function(req, res){
     
     console.log( '\nRequest to update an event...' );
 
@@ -85,7 +94,7 @@ exports.update = async function(req, res){
     const organizer_id = req.body.organizer_id;
 
     try {
-        const result = await user.alter(id, title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id);
+        const result = await events.alter(id, title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id);
         res.status( 200 )
             .send({id: id});
 
@@ -95,6 +104,7 @@ exports.update = async function(req, res){
     }
 };
 
-exports.delete = async function(req, res){
+exports.deleteEvent = async function(req, res){
     return null;
 };
+*/
