@@ -1,4 +1,9 @@
 const db = require('../../config/db');
+var fs = require('mz/fs');
+
+const imagePath = './storage/images/';
+
+
 
 exports.getEvents = async function(startIndex, count, q, category_ids, organizerId, sortBy){
     
@@ -19,24 +24,26 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         case 'CAPACITY_DESC': orderByLine += 'capacity DESC'; break;
     }
 
-    let values = [];
     let categoryIdLine = '';
     let organizerIdLine = '';
 
     if (category_ids != null) {
         categoryIdLine = 'AND E.category_id = ?';
-        values.push(category_ids);
     }
     if (organizerId != null) {
         organizerIdLine = 'AND E.organizer_id = ?';
-        values.push(authorId);
     }
-    values.push('%' + q + '%');
-    values.push(startIndex);
-    values.push(count);
+
+    /*
+    categories = "";
+    const catQuery = "SELECT category_id FROM event_category where event_id = 1"
+    const [catResult] = await conn.query(catQuery);
+    categories = catResult;
+    console.log(categories);
+    */
 
 
-    const query = "SELECT E.id as eventId, E.title as title, C.category_id = (SELECT category_id FROM event_category where event_id = E.id), U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
+    const query = "SELECT E.id as eventId, E.title as title, C.category_id as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
         "FROM event as E LEFT JOIN event_attendees as A on A.event_id = E.id " +
         "INNER JOIN event_category as C on C.event_id = E.id " + categoryIdLine + " " +
         "INNER JOIN user as U on U.id = E.organizer_id " + organizerIdLine + " " +
@@ -49,11 +56,11 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
     return rows;
 };
 
-exports.addEvent = async function(auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee){
+exports.addEvent = async function(auth_token, title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee){
     
     console.log(`Request to insert ${title} into the database...`);
 
-    if (title === undefined || description === undefined || category_ids === undefined) {
+    if (title === undefined || description === undefined) {//|| category_ids === undefined) {
         return 400;
     } else {
 
@@ -66,18 +73,30 @@ exports.addEvent = async function(auth_token, title, description, category_ids, 
             conn.release();
             return 401;  
         } else {
-            const organizer_id = user[0].id;
+            const userId = user[0].id;
         }
 
         console.log(organizer_id)
 
-        const qCat = 'SELECT category_id FROM event_category WHERE category_id = ?';
-        const [category] = await conn.query(qCat, [category_ids]);
+        /*
 
-        if (category.length === 0) {
-            conn.release();
-            return 400;
-        } 
+        for (var i = 0; i < category_ids.length; i++) {
+            var sql = "SELECT * FROM category WHERE id = '" + category_ids[i] + "'";
+            con.query(sql, function(err, result, fields) {
+              if (err) {
+                throw err;
+              }
+              if (!result[0]) {
+                var sql = "INSERT INTO event_category VALUES('" + category_ids[i] + "')";
+                con.query(sql, function(err, result, fields) {
+                  if (err) {
+                    throw err;
+                  }
+                });
+              }
+            });
+        }
+        */
 
         let currentDate = new Date(Date.now());
 
@@ -87,7 +106,7 @@ exports.addEvent = async function(auth_token, title, description, category_ids, 
         }
 
         const query = 'INSERT INTO event (title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)';
-        const [result] = await conn.query(query, [title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id]);
+        const [result] = await conn.query(query, [title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, userId]);
         conn.release();
         return result;
     }
@@ -161,4 +180,42 @@ exports.getEventCategories = async function(){
     conn.release();
 
     return result;
+};
+
+
+exports.getEventImage = async function(id) {
+    console.log(`Request to get the event ${id} image from the database`)
+
+    const conn = await db.getPool().getConnection();
+
+    const query = 'SELECT image_filename FROM event where id = ?';
+    const [result] = await conn.query(query, [id]);
+    conn.release();
+
+
+    if (result.length === 0) {
+        return 404;
+    } else {
+        const filename = result[0].image_filename;
+        console.log(filename);
+
+        console.log(imagePath + filename);
+
+        if (await fs.exists(imagePath + filename)) {
+            console.log("yas")
+            const readFile = await fs.readFile(imagePath + filename);
+
+            const getFileType = getFileType(filename);
+            const imageType = 'image/';
+            if (getFileType === "jpg") {
+                type = "jpeg";
+            }
+            imageType += type;
+
+            return {readFile, imageType};
+        } else {
+            return 404;
+        }
+
+    }
 };

@@ -28,21 +28,23 @@ exports.createEvent = async function(req, res) {
     console.log(`\nRequest to create a new event...`);
 
     const auth_token = req.header('x-authorization');
+    console.log(auth_token)
 
     const title = req.body.title;
     const description = req.body.description;
-    const category_ids = req.body.category_ids;
-    const date = req.body.date || null;
+    //var category_ids = req.body.categoryIds;
+    const date = req.body.date;
     const image_filename = req.body.image_filename || null;
-    const is_online = req.body.is_online || null;
+    const is_online = req.body.isOnline || null;
     const url = req.body.url || null;
     const venue = req.body.venue || null;
     const capacity = req.body.capacity || 9999999;
-    const requires_attendance_control = req.body.requires_attendance_control || null;
+    const requires_attendance_control = req.body.requiresAttendanceControl || null;
     const fee = req.body.fee || null;
 
     try {
-        const result = await events.addEvent(auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee);
+        //add back categories_id
+        const result = await events.addEvent(auth_token, title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee);
         res.status(201)
             .send(result)
     } catch (err) {
@@ -96,6 +98,38 @@ exports.getEventCategories = async function(req, res){
 
     try {
         const result = await events.getEventCategories();
+        res.status(200)
+            .send(result);
+    } catch(err) {
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
+
+exports.getEventImage = async function(req, res) {
+    console.log('Request to get event image');
+
+    const id = req.params.id;
+
+    try {
+        const result = await events.getEventImage(id);
+
+        res.status(200)
+            .send(result);
+    } catch(err) {
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
+
+exports.setEventImage = async function(req, res) {
+    console.log('Request to get event image');
+
+    const id = req.params.id;
+
+    try {
+        const result = await events.getEventImage(id);
+
         res.status(200)
             .send(result);
     } catch(err) {

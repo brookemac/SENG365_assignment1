@@ -14,6 +14,10 @@ module.exports = function(app) {
         //.patch(events.editEvent)
         .delete(events.deleteEvent)
     
+    app.route('/events/:id/photo')
+        .get(events.getEventImage)
+        .put(events.setEventImage)
+    
 
 
     //add event photos
