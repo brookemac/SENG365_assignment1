@@ -43,7 +43,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
     */
 
 
-    const query = "SELECT E.id as eventId, E.title as title, C.category_id as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
+    const query = "SELECT E.id as eventId, E.title as title, concat('[', GROUP_CONCAT(DISTINCT C.category_id), ']') as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
         "FROM event as E LEFT JOIN event_attendees as A on A.event_id = E.id " +
         "INNER JOIN event_category as C on C.event_id = E.id " + categoryIdLine + " " +
         "INNER JOIN user as U on U.id = E.organizer_id " + organizerIdLine + " " +
@@ -119,7 +119,7 @@ exports.getOne = async function(id){
 
     const conn = await db.getPool().getConnection();
 
-    const query = "SELECT E.id as eventId, E.title as title, C.category_id as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity, " +
+    const query = "SELECT E.id as eventId, E.title as title, concat('[', GROUP_CONCAT(DISTINCT C.category_id), ']') as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity, " +
     "E.description as description, E.organizer_id as ordanizerId, E.date as date, E.is_online as isOnline, E.url as url, E.venue as venue, E.requires_attendance_control as requiresAttendanceControl, E.fee as fee " +
     "FROM event as E LEFT JOIN event_attendees as A on A.event_id = E.id " +
     "JOIN event_category as C on C.event_id = E.id " +
@@ -217,5 +217,45 @@ exports.getEventImage = async function(id) {
             return 404;
         }
 
+    }
+};
+
+exports.setUserPhoto = async function(id, auth_token, content_type, image) {
+    console.log(`Request to set image for event ${id}`);
+
+    const conn = await db.getPool().getConnection();
+
+    const eventQuery = 'SELECT * FROM event WHERE id = ?';
+    const [event] = await conn.query(eventQuery, [id]);
+
+    const userQuery = 'SELECT id FROM user WHERE auth_token = ?';
+    const [user] = await conn.query(userQuery, [auth_token]);
+
+    conn.release();
+
+    if (event.length === 0) {
+        return 404;
+    } else if (user.length === 0) {
+        return 401;
+    } else if (user[0].id !== event[0].organizer_id) {
+        return 403;
+    } else if (content_type !== "image/jpeg" && content_type !== "image/png" && content_type !== "image/gif") {
+        return 400;
+    } else {
+        let imageType = '.' + content_type.slice(6);
+        console.log(imageType);
+        let filename = "event_" + id + imageType;
+        fs.writeFile(imagePath + filename, image);
+
+        const conn2 = await db.getPool().getConnection();
+        const query = 'UPDATE event SET image_filename = ? WHERE id = ?';
+        const [result] = await conn2.query(query, [filename, id]);
+        conn2.release();
+
+        if (event[0].image_filename === null) {
+            return 201;
+        } else {
+            return 200;
+        }
     }
 };

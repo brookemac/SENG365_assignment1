@@ -122,18 +122,26 @@ exports.getEventImage = async function(req, res) {
     }
 };
 
-exports.setEventImage = async function(req, res) {
-    console.log('Request to get event image');
+exports.setEventImage = async function(req, res){
+    console.log('Request to set event image');
 
     const id = req.params.id;
+    const user_token = req.header("X-Authorization");
+    const content_type = req.header("Content-Type");
+    const image = req.body;
 
     try {
-        const result = await events.getEventImage(id);
-
-        res.status(200)
-            .send(result);
-    } catch(err) {
+        const result = await petitions.setPetitionPhoto(id, user_token, content_type, image);
+        if (result === 200) {
+            res.status(200)
+                .send("Ok");
+        } else {
+            res.status(201)
+                .send("Created");
+        }
+    } catch( err ) {
         res.status(500)
             .send("Internal Server Error");
     }
 };
+
