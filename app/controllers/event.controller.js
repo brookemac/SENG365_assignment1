@@ -5,17 +5,34 @@ exports.viewEvents = async function(req, res){
     
     console.log('\nRequest to list events...');
     
-    const startIndex = req.query.startIndex ||0;
-    const count = req.query.count || 999999;
-    const q = req.query.q || '';
-    const category_ids = req.query.category_ids || null;
-    const organizerId = req.query.organizerId || null;
+    const startIndex = req.query.startIndex;
+    const count = req.query.count;
+    const q = req.query.q;
+    const category_ids = req.query.categoryIds;
+    const organizer_id = req.query.organizerId;
     const sortBy = req.query.sortBy || 'DATE_DESC';
 
     try {
-        const result = await events.getEvents(startIndex, count, q, category_ids, organizerId, sortBy);
-        res.status(200)
-            .send(result);
+        const result = await events.getEvents(startIndex, count, q, category_ids, organizer_id, sortBy);
+
+        for (var i=0; i<result.length;i++) {
+
+            var categories = result[i].categories
+            var split = categories.split(",");
+        
+            for(var j=0; j<split.length;j++) split[j] = +split[j];
+        
+            result[i].categories = split
+        }
+
+        if (result == 400) {
+            res.status(400)
+                .send("Bad request");
+        } else {
+            res.status(200)
+                .send(result);
+        }
+
 
     } catch (err) {
         res.status(500)
@@ -28,25 +45,33 @@ exports.createEvent = async function(req, res) {
     console.log(`\nRequest to create a new event...`);
 
     const auth_token = req.header('x-authorization');
-    console.log(auth_token)
 
     const title = req.body.title;
     const description = req.body.description;
-    //var category_ids = req.body.categoryIds;
+    var category_ids = req.body.categoryIds;
     const date = req.body.date;
     const image_filename = req.body.image_filename || null;
-    const is_online = req.body.isOnline || null;
+    const is_online = req.body.isOnline || 0;
     const url = req.body.url || null;
     const venue = req.body.venue || null;
     const capacity = req.body.capacity || 9999999;
-    const requires_attendance_control = req.body.requiresAttendanceControl || null;
-    const fee = req.body.fee || null;
+    const requires_attendance_control = req.body.requiresAttendanceControl || 0;
+    const fee = req.body.fee || 0.00;
 
     try {
-        //add back categories_id
-        const result = await events.addEvent(auth_token, title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee);
-        res.status(201)
-            .send(result)
+        const [result] = await events.addEvent(auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee);
+
+        if (result === 400) {
+            res.status(400)
+                .send("Bad request");
+        } else if (result === 401) {
+            res.status(401)
+                .send("Unauthorized");
+        } else {
+            res.status(201)
+                .send(result)
+        }
+
     } catch (err) {
 
         res.status(500)
@@ -62,8 +87,21 @@ exports.viewSingleEvent = async function(req, res) {
 
     try {
         const result = await events.getOne(id)
-        res.status(200)
-            .send(result);
+
+        var categories = result[0].categories
+        var split = categories.split(",");
+    
+        for(var j=0; j<split.length;j++) split[j] = +split[j];
+    
+        result[0].categories = split
+
+        if (result == 404) {
+            res.status(404)
+                .send("Not Found");
+        } else {
+            res.status(200)
+                .send(result);
+        }
 
     } catch (err) {
         res.status(500)
@@ -72,7 +110,48 @@ exports.viewSingleEvent = async function(req, res) {
 };
 
 
-///patch
+exports.updateEvent = async function(req, res){
+    console.log('Request to update event');
+
+    const auth_token = req.header("X-Authorization");
+    const id = req.params.id;
+
+    const title = req.body.title;
+    const description = req.body.description;
+    var category_ids = req.body.categoryIds;
+    const date = req.body.date;
+    const image_filename = req.body.image_filename;
+    const is_online = req.body.isOnline;
+    const url = req.body.url;
+    const venue = req.body.venue;
+    const capacity = req.body.capacity;
+    const requires_attendance_control = req.body.requiresAttendanceControl;
+    const fee = req.body.fee;
+
+    try {
+        const result = await events.updateEvent(id, auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee);
+        
+        if (result === 400) {
+            res.status(400)
+                .send("Bad request")
+        } else if (result === 401){
+            res.status(401)
+                .send("Unauthorised")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+                .send("Not Found")
+        } else {
+            res.status(200)
+            .send("Ok");
+        }
+    } catch (err) {
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
 
 
 exports.deleteEvent = async function(req, res){
@@ -83,8 +162,20 @@ exports.deleteEvent = async function(req, res){
 
     try {
         const result = await events.deleteEvent(id, user_token);
-        res.status(200)
+
+        if (result == 401){
+            res.status(401)
+                .send("Unauthorised")
+        } else if (result == 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result == 404) {
+            res.status(404)
+                .send("Not Found")
+        } else {
+            res.status(200)
             .send("Ok");
+        }
 
     } catch (err) {
         res.status(500)

@@ -55,7 +55,7 @@ exports.logoutUser = async function(auth_token) {
 
     const conn = await db.getPool().getConnection();
 
-    const queryUser = 'SELECT * FROM user WHERE user.auth_token = ?';
+    const queryUser = 'SELECT * FROM user WHERE auth_token = ?';
     const [user] = await conn.query(queryUser, [auth_token]);
 
     console.log(user);
@@ -65,6 +65,7 @@ exports.logoutUser = async function(auth_token) {
         return 401;
     } else {
         const user_id = user[0].id;
+        console.log(user_id);
         const queryToken = 'UPDATE user SET auth_token = NULL WHERE id = ?';
         const result = conn.query(queryToken, [user_id]);
         conn.release();
@@ -146,6 +147,8 @@ exports.updateUser = async function(user_id, first_name, last_name, email, passw
 };
 */
 
+
+//fs?
 exports.getUserImage = async function(id) {
     console.log(`Request to get user ${id} image from the database`)
 

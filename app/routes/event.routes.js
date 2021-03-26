@@ -2,19 +2,19 @@ const events = require('../controllers/event.controller');
 
 module.exports = function(app) {
 
-    app.route('/events')
+    app.route(app.rootUrl + '/events')
         .get(events.viewEvents)
         .post(events.createEvent);
     
-    app.route('/events/categories')
+    app.route(app.rootUrl + '/events/categories')
         .get(events.getEventCategories)
 
-    app.route('/events/:id')
+    app.route(app.rootUrl + '/events/:id')
         .get(events.viewSingleEvent)
-        //.patch(events.editEvent)
+        .patch(events.updateEvent)
         .delete(events.deleteEvent)
     
-    app.route('/events/:id/photo')
+    app.route(app.rootUrl + '/events/:id/photo')
         .get(events.getEventImage)
         .put(events.setEventImage)
     

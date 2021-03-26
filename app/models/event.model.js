@@ -5,13 +5,49 @@ const imagePath = './storage/images/';
 
 
 
-exports.getEvents = async function(startIndex, count, q, category_ids, organizerId, sortBy){
+exports.getEvents = async function(startIndex, count, q, category_ids, organizer_id, sortBy){
     
     console.log(`Request to get all events from the database...`);
     
     const conn = await db.getPool().getConnection();
 
-    //Ordering
+    //base query
+    var query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
+        "FROM event as E " +
+        "LEFT JOIN event_attendees as A on A.event_id = E.id " +
+        "INNER JOIN event_category as C on C.event_id = E.id " +
+        "INNER JOIN user as U on U.id = E.organizer_id " +
+        "WHERE attendance_status_id = 1 ";
+    
+    //WHERE
+    if (q !== undefined || category_ids !== undefined || organizer_id !== undefined) {
+        query += "AND";
+        if (q !== undefined) {
+            query += " E.title LIKE '%" + q + "%'";
+            if (category_ids !== undefined) {
+                for (var i=0; i<category_ids.length;i++) {
+                    query += " AND C.category_id = " + category_ids[i];
+                }
+            }
+            if (organizer_id !== undefined) {
+                query += " AND E.organizer_id = " + organizer_id;
+            }
+        } else if (category_ids !== undefined) {
+            for (var i=0; i<category_ids.length;i++) {
+                query += " C.category_id = " + category_ids[i];
+            }
+            if (organizer_id !== undefined) {
+                query += " AND E.organizer_id = " + organizer_id;
+            }
+        } else {
+            query += " E.organizer_id = " + organizer_id;
+        }
+    }
+
+    query += " GROUP BY E.id ";
+
+
+    //ORDER
     let orderByLine = "ORDER BY ";
     switch (sortBy) {
         case 'ALPHABETICAL_ASC': orderByLine += 'title ASC'; break;
@@ -23,92 +59,75 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         case 'CAPACITY_ASC': orderByLine += 'capacity ASC'; break;
         case 'CAPACITY_DESC': orderByLine += 'capacity DESC'; break;
     }
+    query += orderByLine;
 
-    let categoryIdLine = '';
-    let organizerIdLine = '';
-
-    if (category_ids != null) {
-        categoryIdLine = 'AND E.category_id = ?';
+    //Rows
+    if (startIndex !== undefined && count !== undefined) {
+        query += " LIMIT " + startIndex + ", " + count;
+    } else if (count !== undefined) {
+        query += " LIMIT " + count;
+    } else if (startIndex !== undefined) {
+        query += " LIMIT " + startIndex + ", 999999999999999999";
     }
-    if (organizerId != null) {
-        organizerIdLine = 'AND E.organizer_id = ?';
-    }
 
-    /*
-    categories = "";
-    const catQuery = "SELECT category_id FROM event_category where event_id = 1"
-    const [catResult] = await conn.query(catQuery);
-    categories = catResult;
-    console.log(categories);
-    */
-
-
-    const query = "SELECT E.id as eventId, E.title as title, concat('[', GROUP_CONCAT(DISTINCT C.category_id), ']') as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
-        "FROM event as E LEFT JOIN event_attendees as A on A.event_id = E.id " +
-        "INNER JOIN event_category as C on C.event_id = E.id " + categoryIdLine + " " +
-        "INNER JOIN user as U on U.id = E.organizer_id " + organizerIdLine + " " +
-        "WHERE attendance_status_id = 1 " +
-        "GROUP BY E.id " +
-        orderByLine + " ";
+    console.log(query);
 
     const [rows] = await conn.query(query);
     conn.release();
     return rows;
 };
 
-exports.addEvent = async function(auth_token, title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee){
+exports.addEvent = async function(auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee){
     
     console.log(`Request to insert ${title} into the database...`);
 
-    if (title === undefined || description === undefined) {//|| category_ids === undefined) {
+    if (title === undefined || description === undefined || category_ids === undefined) {
         return 400;
     } else {
 
+        let currentDate = new Date(Date.now());
         const conn = await db.getPool().getConnection();
 
-        const qUser = 'SELECT id FROM user WHERE auth_token = ?';
-        const [user] = await conn.query(qUser, [auth_token]);
+        const userQuery = 'SELECT id FROM user WHERE auth_token = ?';
+        const [user] = await conn.query(userQuery, [auth_token]);
 
         if (user.length === 0) {
             conn.release();
-            return 401;  
-        } else {
-            const userId = user[0].id;
+            return 401;
         }
-
-        console.log(organizer_id)
-
-        /*
-
-        for (var i = 0; i < category_ids.length; i++) {
-            var sql = "SELECT * FROM category WHERE id = '" + category_ids[i] + "'";
-            con.query(sql, function(err, result, fields) {
-              if (err) {
-                throw err;
-              }
-              if (!result[0]) {
-                var sql = "INSERT INTO event_category VALUES('" + category_ids[i] + "')";
-                con.query(sql, function(err, result, fields) {
-                  if (err) {
-                    throw err;
-                  }
-                });
-              }
-            });
-        }
-        */
-
-        let currentDate = new Date(Date.now());
 
         if (currentDate > new Date(date)) {
             conn.release();
             return 400;
         }
 
+
+        for (var i = 0; i < category_ids.length; i++) {
+            console.log(category_ids[i])
+            const catQuery = "SELECT id FROM category WHERE id = '" + category_ids[i] + "'";
+            const [category] = await conn.query(catQuery, [category_ids[i]]);
+            if (category.length === 0) {
+                conn.release();
+                return 400;
+            }
+        }
+
+        const user_id = user[0].id;
+
         const query = 'INSERT INTO event (title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, organizer_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)';
-        const [result] = await conn.query(query, [title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, userId]);
+        const [result] = await conn.query(query, [title, description, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee, user_id]);
+
+        for (var i = 0; i < category_ids.length; i++) {
+
+            const insertCatQuery = "INSERT INTO event_category (event_id, category_id) VALUES(?, ?)";
+            const [category] = await conn.query(insertCatQuery, [result.insertId, category_ids[i]])
+        }
+
+        console.log(result)
+
         conn.release();
-        return result;
+        return [result];
+
     }
 };
 
@@ -119,7 +138,7 @@ exports.getOne = async function(id){
 
     const conn = await db.getPool().getConnection();
 
-    const query = "SELECT E.id as eventId, E.title as title, concat('[', GROUP_CONCAT(DISTINCT C.category_id), ']') as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity, " +
+    const query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity, " +
     "E.description as description, E.organizer_id as ordanizerId, E.date as date, E.is_online as isOnline, E.url as url, E.venue as venue, E.requires_attendance_control as requiresAttendanceControl, E.fee as fee " +
     "FROM event as E LEFT JOIN event_attendees as A on A.event_id = E.id " +
     "JOIN event_category as C on C.event_id = E.id " +
@@ -139,34 +158,189 @@ exports.getOne = async function(id){
 };
 
 
-//update event
-
-exports.deleteEvent = async function(id, auth_token){
-
-    console.log("Request to delete an event from database");
+exports.updateEvent = async function(id, auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee){
+    console.log("Request to update event in the database");
 
     const conn = await db.getPool().getConnection();
 
     const userQuery = 'SELECT id FROM user WHERE auth_token = ?';
     const [user] = await conn.query(userQuery, [auth_token]);
 
-    const eventQuery = 'SELECT * FROM  event WHERE id = ?';
+    if (user.length === 0) {
+        
+        conn.release();
+        return 401;
+    }
+
+    
+
+    const eventQuery = 'SELECT * FROM event WHERE id = ?';
     const [event] = await conn.query(eventQuery, [id]);
 
+    if (event.length === 0) {
+        conn.release();
+        return 404;
+    }
+
+    for (var i = 0; i < category_ids.length; i++) {
+        const catQuery = "SELECT id FROM category WHERE id = '" + category_ids[i] + "'";
+        const [category] = await conn.query(catQuery, [category_ids[i]]);
+        if (category.length === 0) {
+            conn.release();
+            return 400;
+        }
+    }
+
+    console.log(event[0].date)
+
+    let currentDate = new Date(Date.now());
+    const oldDate = new Date(event[0].date);
+
+    if (currentDate > oldDate || (oldDate !== undefined && currentDate > oldDate)) {
+        conn.release();
+        return 403;
+    }
+
+    const user_id = user[0].id
+
+    if (user_id !== event[0].organizer_id) {
+        conn.release();
+        return 403;
+    }
+
+    let first = true;
+    let query = 'UPDATE event SET';
+    if (title !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' title = "' + title + '"';
+    }
+    if (description !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' description = "' + description + '"';
+    }
+    if (date !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' date = "' + new Date(date) + '"';
+    }
+    if (image_filename !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' image_filename = "' + image_filename + '"';
+    }
+    if (is_online !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' is_online = "' + is_online + '"';
+    }
+    if (url !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' url = "' + url + '"';
+    }
+    if (venue !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' venue = "' + venue + '"';
+    }
+    if (capacity !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' capacity = "' + capacity + '"';
+    }
+    if (requires_attendance_control !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' requires_attendance_control = "' + requires_attendance_control + '"';
+    }
+    if (fee !== undefined) {
+        if (first) {
+            first = false;
+        } else {
+            query += ','
+        }
+        query += ' fee = "' + fee + '"';
+    }
+
+    query += ' WHERE id = ?';
+    const [result] = await conn.query(query, [id]);
+    console.log(result)
+
+    const deleteCatQuery = "DELETE FROM event_category WHERE event_id = ?"
+    const [deleteCat] = await conn.query(deleteCatQuery, [id]);
+    console.log(deleteCat)
+
+    for (var i = 0; i < category_ids.length; i++) {
+
+        const insertCatQuery = "INSERT INTO event_category (event_id, category_id) VALUES(?, ?)";
+        const [category] = await conn.query(insertCatQuery, [id, category_ids[i]])
+    }
+
+    
+
     conn.release();
+    return result;
+
+};
+
+
+
+
+exports.deleteEvent = async function(id, auth_token){
+
+    console.log(`Request to delete a event ${id} from database`);
+
+    const conn = await db.getPool().getConnection();
+
+    const userQuery = 'SELECT id FROM user WHERE auth_token = ?';
+    const [user] = await conn.query(userQuery, [auth_token]);
+
+    const eventQuery = 'SELECT * FROM event WHERE id = ?';
+    const [event] = await conn.query(eventQuery, [id]);
 
     if (event.length === 0) {
-        return 404; // Not Found
+        return 404;
     } else if (user.length === 0) {
-        return 401; // Unauthorised
-    } else if (user[0].user_id !== event[0].organizer_id) {
+        return 401;
+    } else if (user[0].id !== event[0].organizer_id) {
         return 403;
     } else {
-        const conn2 = await db.getPool().getConnection();
         const query = 'DELETE FROM event WHERE id = ?; DELETE FROM event_category WHERE event_id = ?';
-        const [result] = await conn2.query(query, [id, id]);
-        conn2.release();
+        const [result] = await conn.query(query, [id, id]);
+
+        console.log(result);
+        conn.release();
         return result;
+        
     }
 };
 
