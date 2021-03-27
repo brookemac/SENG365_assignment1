@@ -173,8 +173,6 @@ exports.updateEvent = async function(id, auth_token, title, description, categor
         return 401;
     }
 
-    
-
     const eventQuery = 'SELECT * FROM event WHERE id = ?';
     const [event] = await conn.query(eventQuery, [id]);
 
@@ -377,6 +375,7 @@ exports.getEventImage = async function(id) {
 
     const query = 'SELECT * FROM event where id = ?';
     const [result] = await conn.query(query, [id]);
+
     conn.release();
 
 
@@ -424,7 +423,7 @@ exports.setEventImage = async function(id, auth_token, content_type, image) {
         
         let filename = "event_" + id + imageType;
         fs.writeFile(imagePath + filename, image);
-        
+
 
         const conn2 = await db.getPool().getConnection();
         const query = 'UPDATE event SET image_filename = ? WHERE id = ?';
@@ -436,5 +435,175 @@ exports.setEventImage = async function(id, auth_token, content_type, image) {
         } else {
             return 200;
         }
+    }
+};
+
+
+exports.getEventAttendees = async function(id, auth_token){
+    console.log(`Request to get attendees for event ${id}`);
+
+    const conn = await db.getPool().getConnection();
+    const eventQuery = 'SELECT * FROM event WHERE id = ?';
+    const [event] = await conn.query(eventQuery, [id]);
+
+    const userQuery = 'SELECT * FROM user where auth_token = ?'
+    const [user] = await conn.query(userQuery, [auth_token])
+
+    if (user.length == 0) {
+        const user = null
+    } else {
+        const user = user[0].id
+    }
+
+    var whereLine = " WHERE A.event_id = ?"
+    if (event[0].organizer_id !== user) {
+        whereLine += " AND A.attendance_status_id = 1 "
+    }
+
+    conn.release();
+
+    if (event.length === 0) {
+        return 404; // Event not Found
+    } else {
+        const conn2 = await db.getPool().getConnection();
+        const query = 'SELECT A.user_id AS attendeeId, S.name as staus, U.first_name as firstName, U.last_name as lastName, A.date_of_interest AS dateOfInterest ' +
+            'FROM event_attendees as A ' +
+            'JOIN user as U ON A.user_id = U.id ' +
+            'JOIN attendance_status as S ON A.attendance_status_id = S.id' +
+            whereLine +
+            'ORDER BY A.date_of_interest';
+
+        const [result] = await conn2.query(query, [id]);
+        conn2.release();
+        return result;
+    }
+};
+
+
+exports.attendEvent = async function(id, auth_token){
+    console.log(`Request to attend event ${id}`);
+
+    const conn = await db.getPool().getConnection();
+
+    const eventQuery = "SELECT * FROM event WHERE id = ?";
+    const [event] = await conn.query(eventQuery, [id]);
+
+    const userQuery = "SELECT id FROM user WHERE auth_token = ?";
+    const [user] = await conn.query(userQuery, [auth_token]);
+
+    if (event.length === 0) {
+        conn.release();
+        return 404;
+    } else if (user.length === 0) {
+        conn.release();
+        return 401;
+    } else {
+        let user_id = user[0].id;
+        let currentDate = new Date(Date.now());
+
+        const alreayAttendingQuery = "SELECT * FROM event_attendees WHERE event_id = ? AND user_id = ?";
+        const [alreadyAttending] = await conn.query(alreayAttendingQuery, [id, user_id]);
+
+        if (alreadyAttending.length !== 0 || new Date(event[0].date) < currentDate) {
+            conn.release();
+            return 403; //Forbidden
+        } else {
+            const query = "INSERT INTO `event_attendees` (`event_id`, `user_id`, `attendance_status_id`, `date_of_interest`) VAULES (?, ?, ?, ?)";
+            var id2 = parseInt(id)
+            const [result] = await conn.query(query, [id2, user_id, 1, currentDate]);
+
+            console.log(result)
+            conn.release();
+            return result;
+        }
+    }
+};
+
+
+exports.removeAttendee = async function(id, auth_token){
+    console.log(`Request to remove attendee from event ${id}`);
+
+    const conn = await db.getPool().getConnection();
+
+    const eventQuery = 'SELECT * FROM event WHERE id = ?';
+    const [event] = await conn.query(eventQuery, [id]);
+
+    const userQuery = 'SELECT id FROM user WHERE auth_token = ?';
+    const [user] = await conn.query(userQuery, [auth_token]);
+
+    conn.release();
+
+    if (event.length === 0) {
+        return 404; // Not Found
+    } else if (user.length === 0) {
+        return 401; //Unauthorized
+    } else {
+        let user_id = user[0].user_id;
+        let currentDate = new Date(Date.now());
+
+        const conn2 = await db.getPool().getConnection();
+        const alreayAttendingQuery = "SELECT * FROM event_attendees WHERE event_id = ? AND user_id = ?";
+        const [alreadyAttending] = await conn2.query(alreayAttendingQuery, [id, user_id]);
+        conn2.release();
+
+        if (alreadyAttending.length === 0 || new Date(event[0].date) < currentDate || event[0].organizer_id === user_id || alreadyAttending[0].attendance_status_id === 3) {
+            return 403; // Forbidden
+        } else {
+            const conn3 = await db.getPool().getConnection();
+            const query = 'DELETE FROM event_attendees WHERE event_id = ? AND user_id = ?';
+            const [result] = await conn3.query(query, [id, user_id]);
+            conn3.release();
+            return result;
+        }
+    }
+};
+
+exports.changeStatus = async function(id, user_id, auth_token, status){
+    console.log(`Request to change status of an attendee from event ${id}`);
+
+    const conn = await db.getPool().getConnection();
+
+    const eventQuery = 'SELECT * FROM event WHERE id = ?';
+    const [event] = await conn.query(eventQuery, [id]);
+
+    const orangizerUserQuery = 'SELECT id FROM user WHERE auth_token = ?';
+    const [organizerUser] = await conn.query(orangizerUserQuery, [auth_token]);
+
+    const userQuery = 'SELECT user_id FROM event_attendees WHERE user_id = ?';
+    const [user] = await conn.query(userQuery, [user_id]);
+
+    conn.release();
+
+    if (event.length === 0) {
+        return 404; // Not Found
+    } else if (user.length === 0) {
+        return 401; //Unauthorized
+    } else if (organizerUser.length === 0) {
+        return 401;
+    } else if (orangizerUserQuery[0].id !== event[0].organizer_id) {
+        return 403;
+    } else if (status !== "accepted" || status !== "pending" || status !== "rejected") {
+        return 400; //bad request
+    } else {
+
+        var attendance_status_id = null
+
+        if (status === "accepted") {
+            attendance_status_id = 1
+        } else if (status !== "pending") {
+            attendance_status_id = 2
+        } else if (status !== "rejected") {
+            attendance_status_id = 3
+        } else {
+            return 400;
+        }
+
+        const conn2 = await db.getPool().getConnection();
+
+        const query = "UPDATE event_attendees SET attendance_status_id = ? WHERE user_id = ?"
+        const [result] = await conn2.query(query, [attendance_status_id, user_id]);
+
+        conn2.release();
+        return result;
     }
 };

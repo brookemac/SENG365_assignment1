@@ -255,3 +255,117 @@ exports.setEventImage = async function(req, res){
     }
 };
 
+
+exports.getEventAttendees = async function(req, res){
+    console.log('Request to get event attendees');
+
+    const id = req.params.id;
+    const auth_token = req.header("X-authorisation");
+
+    try {
+        const result = await events.getEventAttendees(id, auth_token);
+        if (result === 404) {
+            req.status(404)
+                .send("Bad Request");
+        } else {
+            res.status(200)
+                .send(result);
+        }
+    } catch( err ) {
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
+
+
+exports.attendEvent = async function(req, res){
+    console.log('Request to attend an event');
+
+    const id = req.params.id;
+    const auth_token = req.header("X-Authorization");
+
+    try {
+        const result = await events.attendEvent(id, auth_token);
+        if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+            .send("Not Found")
+        } else {
+            res.status(201)
+                .send("Created");
+        }
+    } catch( err ) {
+        console.log(err);
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
+
+exports.removeAttendee = async function(req, res){
+    console.log('Request to remove attendee from event');
+
+    const id = req.params.id;
+    const auth_token = req.header("X-Authorization");
+
+    try {
+        const result = await events.removeAttendee(id, auth_token);
+        
+        if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+            .send("Not Found")
+        } else {
+            res.status(201)
+                .send("Created");
+        }
+    } catch( err ) {
+        console.log(err);
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
+
+
+exports.changeStatus = async function(req, res){
+    console.log('Request to attend an event');
+
+    const id = req.params.id;
+    const user_id = req.params.user_id;
+    const auth_token = req.header("X-Authorization");
+    const status = req.body.status;
+
+    try {
+        const result = await events.changeStatus(id, user_id, auth_token, status);
+        
+        if (result === 400) {
+            res.status(400)
+                .send("Bad Request")
+        } else if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+            .send("Not Found")
+        } else {
+            res.status(200)
+                .send("Ok");
+        }
+    } catch( err ) {
+        console.log(err);
+        res.status(500)
+            .send("Internal Server Error");
+    }
+};
