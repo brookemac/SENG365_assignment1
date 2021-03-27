@@ -13,8 +13,15 @@ exports.createUser = async function(req, res) {
 
     try {
         const result = await users.createUser(first_name, last_name, email, password);
+        
+        if (result === 400) {
+            res.status(400)
+                .send("Bad request")
+        } else {        
         res.status(201)
             .send(result);
+        }
+        
     } catch (err) {
         res.status(500)
             .send("Internal Server Error");
@@ -32,8 +39,14 @@ exports.loginUser = async function(req, res) {
 
     try {
         const result = await users.loginUser(email, password);
+
+        if (result === 400) {
+            res.status(400)
+                .send("Bad request")
+        } else {
         res.status(200)
             .send(result);
+        }
     } catch (err) {
         console.log(err);
         res.status(500)
@@ -52,8 +65,14 @@ exports.logoutUser = async function(req, res) {
 
     try {
         const result = await users.logoutUser(auth_token);
+
+        if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else {
         res.status(200)
             .send('Ok');
+        }
     } catch (err) {
         console.log(err);
         res.status(500)
@@ -63,15 +82,20 @@ exports.logoutUser = async function(req, res) {
 
 
 exports.getUser = async function(req, res) {
-    console.log('Request to get user');
+    console.log('Request to get a user');
 
     const auth_token = req.header("X-Authorization");
-    const user_id = req.params.id;
+    const id = req.params.id;
 
     try {
-        const result = await users.getUser(user_id, auth_token);
-        res.status(200)
-            .send(result);
+        const result = await users.getUser(id, auth_token);
+        if (result === 404) {
+            res.status(404)
+                .send("Not Found")
+        } else {
+            res.status(200)
+                .send(result);
+        }
     } catch (err) {
         console.log(err);
         res.status(500)
@@ -79,12 +103,12 @@ exports.getUser = async function(req, res) {
     }
 };
 
-/*
+
 exports.updateUser = async function(req, res) {
     console.log('Request to update user');
 
     const auth_token = req.header("X-Authorization");
-    const user_id = req.params.id;
+    const id = req.params.id;
     const first_name = req.body.firstName;
     const last_name = req.body.lasttName;
     const email = req.body.email;
@@ -93,16 +117,28 @@ exports.updateUser = async function(req, res) {
 
 
     try {
-        const result = await users.updateUser(user_id, first_name, last_name, email, password, current_password, auth_token);
-        res.status(200)
-            .send('Ok');
+        const result = await users.updateUser(id, first_name, last_name, email, password, current_password, auth_token);
+        
+        if (result === 400) {
+            res.status(400)
+                .send("Bad Request")
+        } else if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else {
+            res.status(200)
+                .send("Ok");
+        }
     } catch (err) {
         console.log(err);
         res.status(500)
             .send("Internal Server Error");
     }
 };
-*/
+
 
 exports.getUserImage = async function(req, res) {
     console.log('Request to get user image');
