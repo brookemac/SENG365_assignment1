@@ -1,5 +1,6 @@
 const db = require('../../config/db');
 var fs = require('mz/fs');
+var mime = require('mime-types');
 
 const imagePath = './storage/images/';
 
@@ -328,18 +329,30 @@ exports.deleteEvent = async function(id, auth_token){
     const [event] = await conn.query(eventQuery, [id]);
 
     if (event.length === 0) {
+        console.log("a")
+        conn.release();
         return 404;
     } else if (user.length === 0) {
+        console.log("b")
+        conn.release();
         return 401;
     } else if (user[0].id !== event[0].organizer_id) {
+        console.log("c")
+        conn.release();
         return 403;
     } else {
-        const query = 'DELETE FROM event WHERE id = ?; DELETE FROM event_category WHERE event_id = ?';
-        const [result] = await conn.query(query, [id, id]);
+        
+        
+        const eventquery = 'DELETE FROM event WHERE id = ?';
+        const [eventresult] = await conn.query(eventquery, [id]);
 
-        console.log(result);
+        const catquery = 'DELETE FROM event_category WHERE event_id = ?';
+        const [catresult] = await conn.query(catquery, [id]);
+
+        console.log(eventresult);
+        console.log(catquery);
         conn.release();
-        return result;
+        return eventresult;
         
     }
 };
@@ -362,39 +375,30 @@ exports.getEventImage = async function(id) {
 
     const conn = await db.getPool().getConnection();
 
-    const query = 'SELECT image_filename FROM event where id = ?';
+    const query = 'SELECT * FROM event where id = ?';
     const [result] = await conn.query(query, [id]);
     conn.release();
 
 
     if (result.length === 0) {
-        return 404;
+        return 404; //Event not found
     } else {
         const filename = result[0].image_filename;
-        console.log(filename);
-
         console.log(imagePath + filename);
 
         if (await fs.exists(imagePath + filename)) {
             console.log("yas")
-            const readFile = await fs.readFile(imagePath + filename);
-
-            const getFileType = getFileType(filename);
-            const imageType = 'image/';
-            if (getFileType === "jpg") {
-                type = "jpeg";
-            }
-            imageType += type;
-
-            return {readFile, imageType};
+            const image = await fs.readFile(imagePath + filename);
+            const mimeType = mime.lookup(filename);
+            return {image, mimeType};
         } else {
-            return 404;
+            return 404; //image not found
         }
 
     }
 };
 
-exports.setUserPhoto = async function(id, auth_token, content_type, image) {
+exports.setEventImage = async function(id, auth_token, content_type, image) {
     console.log(`Request to set image for event ${id}`);
 
     const conn = await db.getPool().getConnection();
@@ -408,18 +412,19 @@ exports.setUserPhoto = async function(id, auth_token, content_type, image) {
     conn.release();
 
     if (event.length === 0) {
-        return 404;
+        return 404; //Not Found
     } else if (user.length === 0) {
-        return 401;
+        return 401; //Unauthorized
     } else if (user[0].id !== event[0].organizer_id) {
-        return 403;
+        return 403; //Forbidden
     } else if (content_type !== "image/jpeg" && content_type !== "image/png" && content_type !== "image/gif") {
         return 400;
     } else {
         let imageType = '.' + content_type.slice(6);
-        console.log(imageType);
+        
         let filename = "event_" + id + imageType;
         fs.writeFile(imagePath + filename, image);
+        
 
         const conn2 = await db.getPool().getConnection();
         const query = 'UPDATE event SET image_filename = ? WHERE id = ?';

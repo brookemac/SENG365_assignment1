@@ -205,8 +205,14 @@ exports.getEventImage = async function(req, res) {
     try {
         const result = await events.getEventImage(id);
 
-        res.status(200)
-            .send(result);
+        if (result === 404) {
+            res.status(404)
+                .send("Not Found");
+        } else {
+            res.status(200)
+            .contentType(result.mimeType)
+            .send(result.image);
+        }
     } catch(err) {
         res.status(500)
             .send("Internal Server Error");
@@ -217,13 +223,26 @@ exports.setEventImage = async function(req, res){
     console.log('Request to set event image');
 
     const id = req.params.id;
-    const user_token = req.header("X-Authorization");
+    const auth_token = req.header("X-Authorization");
     const content_type = req.header("Content-Type");
     const image = req.body;
 
     try {
-        const result = await petitions.setPetitionPhoto(id, user_token, content_type, image);
-        if (result === 200) {
+        const result = await events.setEventImage(id, auth_token, content_type, image);
+        
+        if (result === 400) {
+            res.status(400)
+                .send("Bad Request")
+        } else if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+                .send("Not Found")
+        } else if (result === 200) {
             res.status(200)
                 .send("Ok");
         } else {

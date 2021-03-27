@@ -14,12 +14,11 @@ module.exports = function(app) {
         .patch(events.updateEvent)
         .delete(events.deleteEvent)
     
-    app.route(app.rootUrl + '/events/:id/photo')
+    app.route(app.rootUrl + '/events/:id/image')
         .get(events.getEventImage)
         .put(events.setEventImage)
     
 
 
-    //add event photos
     //add event attendees
 };
