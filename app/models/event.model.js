@@ -18,7 +18,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         "LEFT JOIN event_attendees as A on A.event_id = E.id " +
         "INNER JOIN event_category as C on C.event_id = E.id " +
         "INNER JOIN user as U on U.id = E.organizer_id " +
-        "WHERE attendance_status_id = 1 ";
+        "WHERE attendance_status_id = 1";
     
     //WHERE
     if (q !== undefined || category_ids !== undefined || organizer_id !== undefined) {

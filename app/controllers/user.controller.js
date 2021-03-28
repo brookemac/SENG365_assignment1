@@ -110,7 +110,7 @@ exports.updateUser = async function(req, res) {
     const auth_token = req.header("X-Authorization");
     const id = req.params.id;
     const first_name = req.body.firstName;
-    const last_name = req.body.lasttName;
+    const last_name = req.body.lastName;
     const email = req.body.email;
     const password = req.body.password;
     const current_password = req.body.currentPassword;
@@ -147,8 +147,14 @@ exports.getUserImage = async function(req, res) {
 
     try {
         const result = await users.getUserImage(id);
+
+        if (result === 404) {
+            res.status(404)
+                .send("Not Found")
+        } else {
         res.status(200)
             .send(result.image);
+        }
     } catch (err) {
         console.log(err);
         res.status(500)
@@ -166,7 +172,20 @@ exports.setUserImage = async function(req, res) {
 
     try {
         const result = await users.setUserImage(id, auth_token, content_type, image);
-        if (result === 200) {
+        
+        if (result === 400) {
+            res.status(400)
+                .send("Bad Request")
+        } else if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+                .send("Not Found")
+        } else if (result === 200) {
             res.status(200)
                 .send('Ok');
         } else {
@@ -188,8 +207,19 @@ exports.deleteUserImage = async function(req, res) {
 
     try {
         const result = await users.deleteUserImage(id, auth_token);
-        res.status(200)
-            .send('Ok');
+        if (result === 401) {
+            res.status(401)
+                .send("Unauthorized")
+        } else if (result === 403) {
+            res.status(403)
+                .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+                .send("Not Found")
+        } else {
+            res.status(200)
+                .send('Ok');
+        }
     } catch (err) {
         console.log(err);
         res.status(500)

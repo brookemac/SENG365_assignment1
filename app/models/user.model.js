@@ -1,7 +1,8 @@
 const db = require('../../config/db');
-var fs = require('mz/fs');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
+var fs = require('mz/fs');
+var mime = require('mime-types');
 
 const imagePath = './storage/images/';
 
@@ -109,6 +110,10 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
     const emailQuery = "SELECT * FROM user WHERE email = ?";
     const [userEmail] = await conn.query(emailQuery, [email]);
 
+    if (password == "") {
+        password = undefined
+    }
+
     let first = true;
     let query = 'UPDATE user SET';
     if (first_name !== undefined) {
@@ -135,7 +140,7 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
         }
         query += ' email = "' + email + '"';
     }
-    if (password !== undefined || password !== "") {
+    if (password !== undefined) {
         if (first) {
             first = false;
         } else {
@@ -149,7 +154,7 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
 
     console.log(query)
 
-    if ((email !== undefined && !email.includes('@')) || user.length === 0) {
+    if ((email !== undefined && !email.includes('@')) || user.length === 0 || first === true) {
         conn.release();
         return 400; //Bad request
     } else if (userRequesting.length === 0 || (password !== undefined && password !== current_password && !(await bcrypt.compare(current_password, user[0].password)))) {
@@ -173,39 +178,30 @@ exports.getUserImage = async function(id) {
 
     const conn = await db.getPool().getConnection();
 
-    const query = 'SELECT image_filename FROM user where id = ?';
-    const [result] = await conn.query(query, [id]);
+    const userQuery = 'SELECT * FROM user WHERE id = ?';
+    const [user] = await conn.query(userQuery, [id]);
     conn.release();
 
-
-    if (result.length === 0) {
+    if (user.length === 0) {
         return 404;
     } else {
-        const filename = result[0].image_filename;
-        console.log(filename);
+        const filename = user[0].image_filename;
 
         console.log(imagePath + filename);
 
         if (await fs.exists(imagePath + filename)) {
-            console.log("yas")
-            const readFile = await fs.readFile(imagePath + filename);
-
-            const getFileType = getFileType(filename);
-            const imageType = 'image/';
-            if (getFileType === "jpg") {
-                type = "jpeg";
-            }
-            imageType += type;
-
-            return {readFile, imageType};
+            const image = await fs.readFile(imagePath + filename);
+            const mimeType = mime.lookup(filename);
+            return {image, mimeType};
         } else {
-            return 404;
+            return 404; //image not found
         }
-
+    
     }
 };
 
-exports.setUserPhoto = async function(id, auth_token, content_type, image) {
+
+exports.setUserImage = async function(id, auth_token, content_type, image) {
     console.log(`Request to set image for user ${id}`);
 
     const conn = await db.getPool().getConnection();
@@ -228,7 +224,6 @@ exports.setUserPhoto = async function(id, auth_token, content_type, image) {
         return 400;
     } else {
         let imageType = '.' + content_type.slice(6);
-        console.log(imageType);
         let filename = "user_" + id + imageType;
         fs.writeFile(imagePath + filename, image);
 
@@ -237,7 +232,7 @@ exports.setUserPhoto = async function(id, auth_token, content_type, image) {
         const [result] = await conn2.query(query, [filename, id]);
         conn2.release();
 
-        if (user[0].photo_filename === null) {
+        if (user[0].image_filename === null) {
             return 201;
         } else {
             return 200;
@@ -246,12 +241,13 @@ exports.setUserPhoto = async function(id, auth_token, content_type, image) {
 };
 
 exports.deleteUserImage = async function(id, auth_token) {
-    console.log(`Request to delete photo for user ${id}`);
+    console.log(`Request to delete image for user ${id}`);
 
     const conn = await db.getPool().getConnection();
 
     const userQuery = 'SELECT * FROM user WHERE id = ?';
     const [user] = await conn.query(userQuery, [id]);
+    
     const requestingQuery = 'SELECT * FROM user WHERE auth_token = ?';
     const [userRequesting] = await conn.query(requestingQuery, [auth_token]);
 
