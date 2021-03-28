@@ -61,6 +61,7 @@ exports.createEvent = async function(req, res) {
     try {
         const [result] = await events.addEvent(auth_token, title, description, category_ids, date, image_filename, is_online, url, venue, capacity, requires_attendance_control, fee);
 
+        console.log(result)
         if (result === 400) {
             res.status(400)
                 .send("Bad request");
@@ -73,6 +74,8 @@ exports.createEvent = async function(req, res) {
         }
 
     } catch (err) {
+
+        console.log(err)
 
         res.status(500)
             .send(`ERROR creating event ${title}: ${err}`);
@@ -87,6 +90,8 @@ exports.viewSingleEvent = async function(req, res) {
 
     try {
         const result = await events.getOne(id)
+
+        console.log(result)
 
         var categories = result[0].categories
         var split = categories.split(",");
