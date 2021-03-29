@@ -44,8 +44,8 @@ exports.loginUser = async function(req, res) {
             res.status(400)
                 .send("Bad request")
         } else {
-        res.status(200)
-            .send(result);
+            res.status(200)
+                .send(result);
         }
     } catch (err) {
         console.log(err);
@@ -152,8 +152,9 @@ exports.getUserImage = async function(req, res) {
             res.status(404)
                 .send("Not Found")
         } else {
-        res.status(200)
-            .send(result.image);
+            res.status(200)
+                .contentType(result.mimeType)
+                .send(result.image);
         }
     } catch (err) {
         console.log(err);

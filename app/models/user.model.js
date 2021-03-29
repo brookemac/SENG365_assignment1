@@ -191,6 +191,7 @@ exports.getUserImage = async function(id) {
 
         if (await fs.exists(imagePath + filename)) {
             const image = await fs.readFile(imagePath + filename);
+            console.log(image)
             const mimeType = mime.lookup(filename);
             return {image, mimeType};
         } else {
