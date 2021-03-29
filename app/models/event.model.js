@@ -316,7 +316,7 @@ exports.updateEvent = async function(id, auth_token, title, description, categor
 
     for (var i = 0; i < category_ids.length; i++) {
 
-        const insertCatQuery = "INSERT INTO event_category (event_id, category_id) VALUES(?, ?)";
+        const insertCatQuery = "INSERT INTO event_category (event_id, category_id) VALUES (?, ?)";
         const [category] = await conn.query(insertCatQuery, [id, category_ids[i]])
     }
 
@@ -532,7 +532,7 @@ exports.attendEvent = async function(id, auth_token){
             conn.release();
             return 403; //Forbidden
         } else {
-            const query = "INSERT INTO `event_attendees` (`event_id`, `user_id`, `attendance_status_id`, `date_of_interest`) VAULES (?, ?, ?, ?)";
+            const query = "INSERT INTO event_attendees (event_id, user_id, attendance_status_id, date_of_interest) VALUES (?,?,?,?)";
             
             console.log(currentDate instanceof Date)
             var id2 = parseInt(id)
