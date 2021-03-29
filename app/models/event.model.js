@@ -24,14 +24,15 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
     if (q !== undefined || category_ids !== undefined || organizer_id !== undefined) {
         query += "WHERE";
         if (q !== undefined) {
-            query += " E.title LIKE '%" + q + "%'";
+            query += " (E.title LIKE '%" + q + "%' OR E.description LIKE '%" + q + "%')"; //description
             if (category_ids !== undefined) {
                 if (category_ids.length > 1) {
-                    query += " AND"
+                    query += " AND ("
                     for (var i=0; i<category_ids.length;i++) {
-                        query += " C.category_id = " + category_ids[i] + " OR";
+                        query += "C.category_id = " + category_ids[i] + " OR ";
                     }
                     query = query.slice(0, -3);
+                    query += ")";
                 } else {
                     query += " AND C.category_id = " + category_ids;
                 }
@@ -41,11 +42,12 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
             }
         } else if (category_ids !== undefined) {
             if (category_ids.length > 1) {
-                query += " AND"
+                query += " AND ("
                 for (var i=0; i<category_ids.length;i++) {
-                    query += " C.category_id = " + category_ids[i] + " OR";
+                    query += "C.category_id = " + category_ids[i] + " OR ";
                 }
                 query = query.slice(0, -3);
+                query += ")";
             } else {
                 query += " AND C.category_id = " + category_ids;
             }
@@ -353,13 +355,17 @@ exports.deleteEvent = async function(id, auth_token){
         conn.release();
         return 403;
     } else {
+
+        console.log("d")
+
+
+        const catquery = 'DELETE FROM event_category WHERE event_id = ?';
+        const [catresult] = await conn.query(catquery, [id]);
         
         
         const eventquery = 'DELETE FROM event WHERE id = ?';
         const [eventresult] = await conn.query(eventquery, [id]);
 
-        const catquery = 'DELETE FROM event_category WHERE event_id = ?';
-        const [catresult] = await conn.query(catquery, [id]);
 
         console.log(eventresult);
         console.log(catquery);
@@ -472,6 +478,8 @@ exports.getEventAttendees = async function(id, auth_token){
     var whereLine = " WHERE A.event_id = ?"
     if (event[0].organizer_id !== user) {
         whereLine += " AND A.attendance_status_id = 1 "
+    } else {
+        whereLine += " AND (A.attendance_status_id = 1 OR A.user_id = ?) "
     }
 
     conn.release();
@@ -480,14 +488,16 @@ exports.getEventAttendees = async function(id, auth_token){
         return 404; // Event not Found
     } else {
         const conn2 = await db.getPool().getConnection();
-        const query = 'SELECT A.user_id AS attendeeId, S.name as staus, U.first_name as firstName, U.last_name as lastName, A.date_of_interest AS dateOfInterest ' +
+        const query = 'SELECT A.user_id AS attendeeId, S.name as status, U.first_name as firstName, U.last_name as lastName, A.date_of_interest AS dateOfInterest ' +
             'FROM event_attendees as A ' +
             'JOIN user as U ON A.user_id = U.id ' +
             'JOIN attendance_status as S ON A.attendance_status_id = S.id' +
             whereLine +
             'ORDER BY A.date_of_interest';
+        
+        console.log(query)
 
-        const [result] = await conn2.query(query, [id]);
+        const [result] = await conn2.query(query, [id, user, id]);
         conn2.release();
         return result;
     }
@@ -523,6 +533,8 @@ exports.attendEvent = async function(id, auth_token){
             return 403; //Forbidden
         } else {
             const query = "INSERT INTO `event_attendees` (`event_id`, `user_id`, `attendance_status_id`, `date_of_interest`) VAULES (?, ?, ?, ?)";
+            
+            console.log(currentDate instanceof Date)
             var id2 = parseInt(id)
             const [result] = await conn.query(query, [id2, user_id, 1, currentDate]);
 

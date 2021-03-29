@@ -183,6 +183,7 @@ exports.deleteEvent = async function(req, res){
         }
 
     } catch (err) {
+        console.log(err)
         res.status(500)
             .send("Internal Server Error");
     }
@@ -231,6 +232,8 @@ exports.setEventImage = async function(req, res){
     const auth_token = req.header("X-Authorization");
     const content_type = req.header("Content-Type");
     const image = req.body;
+
+    console.log(image)
 
     try {
         const result = await events.setEventImage(id, auth_token, content_type, image);
