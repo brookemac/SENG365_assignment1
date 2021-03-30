@@ -6,7 +6,7 @@ var mime = require('mime-types');
 
 const imagePath = './storage/images/';
 
-//note: make the password hash somehow?
+
 exports.createUser = async function(first_name, last_name, email, password) {
     console.log(`Request to create a new user for the database`);
 
@@ -36,19 +36,45 @@ exports.loginUser = async function(email, password) {
     const userQuery = 'SELECT * FROM user WHERE email = ?';
     const [user] = await conn.query(userQuery, [email]);
 
-    if (email === undefined || password === undefined || user.length === 0 
+    if (email === undefined)  {
+
+        conn.release();
+        return 400;
+    }
+    if (password === undefined)  {
+
+        conn.release();
+        return 401;
+    }
+    if (user.length)  {
+
+        conn.release();
+        return 403;
+    }
+    if (!(await bcrypt.compare(password, user[0].password)))  {
+
+        conn.release();
+        return 404;
+    }
+
+        
+    /*
+        
+        
+        || password === undefined || user.length === 0 
         || !(await bcrypt.compare(password, user[0].password))) {
         conn.release();
         return 400;
     } else {
-        const user_id = user[0].id;
-        const token = Math.random().toString(36).substr(2);
+        */
+    const user_id = user[0].id;
+    const token = Math.random().toString(36).substr(2);
 
-        const addTokenQuery = 'UPDATE user SET auth_token = ? WHERE id = ?';
-        const result = conn.query(addTokenQuery, [token, user_id]);
-        conn.release();
+    const addTokenQuery = 'UPDATE user SET auth_token = ? WHERE id = ?';
+    const result = conn.query(addTokenQuery, [token, user_id]);
+    conn.release();
 
-        return {userId: user_id, token: token};
+    return {userId: user_id, token: token};
     }
 };
 
