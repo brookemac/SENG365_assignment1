@@ -40,24 +40,12 @@ exports.loginUser = async function(req, res) {
     try {
         const result = await users.loginUser(email, password);
 
-        console.log(result)
-
         if (result === 400) {
             res.status(400)
-                .send("Bad Request")
-        } else if (result === 401) {
-            res.status(401)
-                .send("Unauthorized")
-        } else if (result === 403) {
-            res.status(403)
-                .send("Forbidden")
-        } else if (result === 404) {
-            res.status(403)
-                .send("Bad")
-        
+                .send("Bad request")
         } else {
             res.status(200)
-                .send("Ok");
+                .send(result);
         }
     } catch (err) {
         console.log(err);
