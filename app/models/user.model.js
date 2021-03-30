@@ -112,6 +112,11 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
     const requestingQuery = "SELECT * FROM user WHERE auth_token = ?";
     const [userRequesting] = await conn.query(requestingQuery, [auth_token]);
 
+    if (user[0].auth_token !== userRequesting[0].auth_token) {
+        conn.release();
+        return 404;
+    }
+
     const emailQuery = "SELECT * FROM user WHERE email = ?";
     const [userEmail] = await conn.query(emailQuery, [email]);
 
@@ -165,7 +170,7 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
     } else if (userRequesting.length === 0 || (password !== undefined && password !== current_password && !(await bcrypt.compare(current_password, user[0].password)))) {
         conn.release();
         return 401; // Unauthorized
-    } else if ((userEmail.length !== 0 && userEmail[0].id !== id) || user[0].auth_token !== userRequesting[0].auth_token) {
+    } else if ((userEmail.length !== 0 && userEmail[0].id !== id) {
         conn.release();
         return 403; // Forbidden
     }
