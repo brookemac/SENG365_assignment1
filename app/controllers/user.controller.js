@@ -70,8 +70,8 @@ exports.logoutUser = async function(req, res) {
             res.status(401)
                 .send("Unauthorized")
         } else {
-        res.status(200)
-            .send('Ok');
+            res.status(200)
+                .send('Ok');
         }
     } catch (err) {
         console.log(err);
