@@ -128,6 +128,9 @@ exports.updateUser = async function(req, res) {
         } else if (result === 403) {
             res.status(403)
                 .send("Forbidden")
+        } else if (result === 404) {
+            res.status(404)
+                .send("Not Found")
         } else {
             res.status(200)
                 .send("Ok");

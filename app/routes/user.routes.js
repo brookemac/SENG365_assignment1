@@ -18,6 +18,6 @@ module.exports = function(app) {
     app.route(app.rootUrl + '/users/:id/image')
         .get(users.getUserImage)
         .put(users.setUserImage)
-        //.delete(users.deleteUserImage);
+        .delete(users.deleteUserImage);
 
 };

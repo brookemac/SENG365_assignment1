@@ -104,6 +104,11 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
     const userQuery = "SELECT * FROM user WHERE id = ?";
     const [user] = await conn.query(userQuery, [id]);
 
+    if (user.length === 0 ) {
+        conn.release();
+        return 404;
+    }
+
     const requestingQuery = "SELECT * FROM user WHERE auth_token = ?";
     const [userRequesting] = await conn.query(requestingQuery, [auth_token]);
 
@@ -154,7 +159,7 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
 
     console.log(query)
 
-    if ((email !== undefined && !email.includes('@')) || user.length === 0 || first === true) {
+    if ((email !== undefined && !email.includes('@')) || first === true) {
         conn.release();
         return 400; //Bad request
     } else if (userRequesting.length === 0 || (password !== undefined && password !== current_password && !(await bcrypt.compare(current_password, user[0].password)))) {
@@ -163,7 +168,7 @@ exports.updateUser = async function(id, first_name, last_name, email, password, 
     } else if ((userEmail.length !== 0 && userEmail[0].id !== id) || user[0].auth_token !== userRequesting[0].auth_token) {
         conn.release();
         return 403; // Forbidden
-    } 
+    }
 
     const [result] = await conn.query(query, [id]);
     conn.release();
@@ -258,7 +263,7 @@ exports.deleteUserImage = async function(id, auth_token) {
         return 404;
     } else if (userRequesting.length === 0) {
         return 401;
-    } else if (user[0].user_id !== userRequesting[0].id) {
+    } else if (user[0].id !== userRequesting[0].id) {
         return 403;
     } else {
         const conn2 = await db.getPool().getConnection();
