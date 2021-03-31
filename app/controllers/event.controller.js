@@ -12,11 +12,13 @@ exports.viewEvents = async function(req, res){
     const organizer_id = req.query.organizerId;
     const sortBy = req.query.sortBy || 'DATE_DESC';
 
-    if ((Array.isArray(category_ids) === false)) {
+    if ((Array.isArray(category_ids) === false) && category_ids !== undefined) {
         var categoryArray = [category_ids];
     } else {
         var categoryArray = category_ids;
     }
+
+    console.log(categoryArray)
 
     try {
         const result = await events.getEvents(startIndex, count, q, categoryArray, organizer_id, sortBy);
@@ -31,7 +33,7 @@ exports.viewEvents = async function(req, res){
             result[i].categories = split
         }
 
-        if (result == 400) {
+        if (result === 400) {
             res.status(400)
                 .send("Bad request");
         } else {
