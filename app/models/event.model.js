@@ -59,7 +59,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         }
     }
 
-    query += "GROUP BY E.id ";
+    query += " GROUP BY E.id ";
 
 
     //ORDER
