@@ -259,12 +259,12 @@ exports.setEventImage = async function(req, res){
         } else if (result === 404) {
             res.status(404)
                 .send("Not Found")
-        } else if (result === 200) {
-            res.status(200)
-                .send("Ok");
-        } else {
+        } else if (result === 201) {
             res.status(201)
                 .send("Created");
+        } else {
+            res.status(200)
+                .send("Ok");
         }
     } catch( err ) {
         res.status(500)
