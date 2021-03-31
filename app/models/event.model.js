@@ -12,6 +12,15 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
     
     const conn = await db.getPool().getConnection();
 
+    for (var i = 0; i < category_ids.length; i++) {
+        const catQuery = "SELECT id FROM category WHERE id = '" + category_ids[i] + "'";
+        const [category] = await conn.query(catQuery, [category_ids[i]]);
+        if (category.length === 0) {
+            conn.release();
+            return 400;
+        }
+    }
+
     //base query
     var query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, (SELECT COUNT (*) FROM event_attendees as A WHERE A.attendance_status_id = 1 AND E.id = A.event_id) as numAcceptedAttendees, E.capacity as capacity " +
         "FROM event as E " +
@@ -89,11 +98,6 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
 
     const [rows] = await conn.query(query);
     conn.release();
-
-
-    if (rows.length === 0) {
-        return 400;
-    }
     return rows;
 };
 
