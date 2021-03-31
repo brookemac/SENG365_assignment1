@@ -31,7 +31,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
                     for (var i=0; i<category_ids.length;i++) {
                         query += "C.category_id = " + category_ids[i] + " OR ";
                     }
-                    query = query.slice(0, -3);
+                    query = query.slice(0, -4);
                     query += ")";
                 } else {
                     query += " AND C.category_id = " + category_ids;
@@ -42,11 +42,11 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
             }
         } else if (category_ids !== undefined) {
             if (category_ids.length > 1) {
-                query += " AND ("
+                query += " ("
                 for (var i=0; i<category_ids.length;i++) {
                     query += "C.category_id = " + category_ids[i] + " OR ";
                 }
-                query = query.slice(0, -3);
+                query = query.slice(0, -4);
                 query += ")";
             } else {
                 query += " AND C.category_id = " + category_ids;

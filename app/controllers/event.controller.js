@@ -210,14 +210,15 @@ exports.getEventImage = async function(req, res) {
 
     try {
         const result = await events.getEventImage(id);
+        console.log(result)
 
         if (result === 404) {
             res.status(404)
                 .send("Not Found");
         } else {
             res.status(200)
-            .contentType(result.mimeType)
-            .send(result.image);
+                .contentType(result.mimeType)
+                .send(result.image);
         }
     } catch(err) {
         res.status(500)
