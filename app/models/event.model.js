@@ -13,14 +13,14 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
     const conn = await db.getPool().getConnection();
 
     //base query
-    var query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity " +
+    var query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, (SELECT COUNT (*) FROM event_attendees as A WHERE A.attendance_status_id = 1 AND E.id = A.event_id) as numAcceptedAttendees, E.capacity as capacity " +
         "FROM event as E " +
         "LEFT JOIN event_attendees as A on A.event_id = E.id " +
         "INNER JOIN event_category as C on C.event_id = E.id " +
         "INNER JOIN user as U on U.id = E.organizer_id ";
     
     //WHERE
-    
+    //not showing all of the category ids when in query
     if (q !== undefined || category_ids !== undefined || organizer_id !== undefined) {
         query += "WHERE";
         if (q !== undefined) {
@@ -59,7 +59,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         }
     }
 
-    query += " GROUP BY E.id ";
+    query += "GROUP BY E.id ";
 
 
     //ORDER
@@ -153,7 +153,7 @@ exports.getOne = async function(id){
 
     const conn = await db.getPool().getConnection();
 
-    const query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, COUNT(A.user_id) as numAcceptedAttendees, E.capacity as capacity, " +
+    const query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, (SELECT COUNT (*) FROM event_attendees as A WHERE A.attendance_status_id = 1 AND E.id = A.event_id) as numAcceptedAttendees, E.capacity as capacity, " +
     "E.description as description, E.organizer_id as ordanizerId, E.date as date, E.is_online as isOnline, E.url as url, E.venue as venue, E.requires_attendance_control as requiresAttendanceControl, E.fee as fee " +
     "FROM event as E LEFT JOIN event_attendees as A on A.event_id = E.id " +
     "JOIN event_category as C on C.event_id = E.id " +

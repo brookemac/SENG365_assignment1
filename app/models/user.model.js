@@ -36,7 +36,7 @@ exports.loginUser = async function(email, password) {
     const userQuery = 'SELECT * FROM user WHERE email = ?';
     const [user] = await conn.query(userQuery, [email]);
 
-    if (email === undefined || password === undefined || user.length === 0 
+    if (email === undefined || !email.includes('@') || password === undefined || user.length === 0 
         || !(await bcrypt.compare(password, user[0].password))) {
         conn.release();
         return 400;
@@ -47,6 +47,8 @@ exports.loginUser = async function(email, password) {
         const addTokenQuery = 'UPDATE user SET auth_token = ? WHERE id = ?';
         const result = conn.query(addTokenQuery, [token, user_id]);
         conn.release();
+
+        console.log("a")
 
         return {userId: user_id, token: token};
     }
