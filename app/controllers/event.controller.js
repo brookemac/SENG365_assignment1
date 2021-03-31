@@ -12,8 +12,14 @@ exports.viewEvents = async function(req, res){
     const organizer_id = req.query.organizerId;
     const sortBy = req.query.sortBy || 'DATE_DESC';
 
+    if ((Array.isArray(category_ids) === false)) {
+        var categoryArray = [category_ids];
+    } else {
+        var categoryArray = category_ids;
+    }
+
     try {
-        const result = await events.getEvents(startIndex, count, q, category_ids, organizer_id, sortBy);
+        const result = await events.getEvents(startIndex, count, q, categoryArray, organizer_id, sortBy);
 
         for (var i=0; i<result.length;i++) {
 

@@ -20,7 +20,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         "INNER JOIN user as U on U.id = E.organizer_id ";
     
     //WHERE
-    //not showing all of the category ids when in query
+    //not showing all of the category ids when in query    
     if (q !== undefined || category_ids !== undefined || organizer_id !== undefined) {
         query += "WHERE";
         if (q !== undefined) {
@@ -49,7 +49,7 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
                 query = query.slice(0, -4);
                 query += ")";
             } else {
-                query += " AND C.category_id = " + category_ids;
+                query += " C.category_id = " + category_ids;
             }
             if (organizer_id !== undefined) {
                 query += " AND E.organizer_id = " + organizer_id;
@@ -89,6 +89,11 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
 
     const [rows] = await conn.query(query);
     conn.release();
+
+
+    if (rows.length === 0) {
+        return 400;
+    }
     return rows;
 };
 
