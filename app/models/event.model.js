@@ -466,10 +466,15 @@ exports.getEventAttendees = async function(id, auth_token){
     const eventQuery = 'SELECT * FROM event WHERE id = ?';
     const [event] = await conn.query(eventQuery, [id]);
 
+    if (event.length === 0) {
+        conn.release();
+        return 404; // Event not Found
+    }
+
     const userQuery = 'SELECT * FROM user where auth_token = ?'
     const [user] = await conn.query(userQuery, [auth_token])
 
-    if (user.length == 0) {
+    if (user.length === 0) {
         const user = null
     } else {
         const user = user[0].id
@@ -484,23 +489,19 @@ exports.getEventAttendees = async function(id, auth_token){
 
     conn.release();
 
-    if (event.length === 0) {
-        return 404; // Event not Found
-    } else {
-        const conn2 = await db.getPool().getConnection();
-        const query = 'SELECT A.user_id AS attendeeId, S.name as status, U.first_name as firstName, U.last_name as lastName, A.date_of_interest AS dateOfInterest ' +
-            'FROM event_attendees as A ' +
-            'JOIN user as U ON A.user_id = U.id ' +
-            'JOIN attendance_status as S ON A.attendance_status_id = S.id' +
-            whereLine +
-            'ORDER BY A.date_of_interest';
-        
-        console.log(query)
+    const conn2 = await db.getPool().getConnection();
+    const query = 'SELECT A.user_id AS attendeeId, S.name as status, U.first_name as firstName, U.last_name as lastName, A.date_of_interest AS dateOfInterest ' +
+        'FROM event_attendees as A ' +
+        'JOIN user as U ON A.user_id = U.id ' +
+        'JOIN attendance_status as S ON A.attendance_status_id = S.id' +
+        whereLine +
+        'ORDER BY A.date_of_interest';
+    
+    console.log(query)
 
-        const [result] = await conn2.query(query, [id, user, id]);
-        conn2.release();
-        return result;
-    }
+    const [result] = await conn2.query(query, [id, user, id]);
+    conn2.release();
+    return result;
 };
 
 

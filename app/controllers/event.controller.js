@@ -272,8 +272,10 @@ exports.getEventAttendees = async function(req, res){
 
     try {
         const result = await events.getEventAttendees(id, auth_token);
+
         if (result === 404) {
-            req.status(404)
+
+            res.status(404)
                 .send("Bad Request");
         } else {
             res.status(200)
