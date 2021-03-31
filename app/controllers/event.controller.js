@@ -331,6 +331,8 @@ exports.removeAttendee = async function(req, res){
     const id = req.params.id;
     const auth_token = req.header("X-Authorization");
 
+    console.log(auth_token)
+
     try {
         const result = await events.removeAttendee(id, auth_token);
         
@@ -344,8 +346,8 @@ exports.removeAttendee = async function(req, res){
             res.status(404)
             .send("Not Found")
         } else {
-            res.status(201)
-                .send("Created");
+            res.status(200)
+                .send("Ok");
         }
     } catch( err ) {
         console.log(err);

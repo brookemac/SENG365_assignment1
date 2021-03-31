@@ -23,7 +23,6 @@ exports.getEvents = async function(startIndex, count, q, category_ids, organizer
         }
     }
 
-
     //base query
     var query = "SELECT E.id as eventId, E.title as title, GROUP_CONCAT(DISTINCT C.category_id) as categories, U.first_name as organizerFirstName, U.last_name as organizerLastName, (SELECT COUNT (*) FROM event_attendees as A WHERE A.attendance_status_id = 1 AND E.id = A.event_id) as numAcceptedAttendees, E.capacity as capacity " +
         "FROM event as E " +
@@ -567,7 +566,7 @@ exports.removeAttendee = async function(id, auth_token){
     const eventQuery = 'SELECT * FROM event WHERE id = ?';
     const [event] = await conn.query(eventQuery, [id]);
 
-    const userQuery = 'SELECT id FROM user WHERE auth_token = ?';
+    const userQuery = 'SELECT * FROM user WHERE auth_token = ?';
     const [user] = await conn.query(userQuery, [auth_token]);
 
     conn.release();
@@ -577,13 +576,15 @@ exports.removeAttendee = async function(id, auth_token){
     } else if (user.length === 0) {
         return 401; //Unauthorized
     } else {
-        let user_id = user[0].user_id;
+        let user_id = user[0].id;
         let currentDate = new Date(Date.now());
 
         const conn2 = await db.getPool().getConnection();
         const alreayAttendingQuery = "SELECT * FROM event_attendees WHERE event_id = ? AND user_id = ?";
         const [alreadyAttending] = await conn2.query(alreayAttendingQuery, [id, user_id]);
         conn2.release();
+
+        console.log(alreadyAttending)
 
         if (alreadyAttending.length === 0 || new Date(event[0].date) < currentDate || event[0].organizer_id === user_id || alreadyAttending[0].attendance_status_id === 3) {
             return 403; // Forbidden
